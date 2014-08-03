@@ -27,11 +27,21 @@ if "%4"=="" goto :bad
 	
 	for /f "tokens=7 delims=	" %%A in ('type cookies.txt ^| find "csrf"') do set csrf=%%A
 	
+	:: check that we have the session cookie, if not, something bad happened, don't spend time uploading.
+	set session_cookie=
+	for /f "tokens=6 delims=	" %%A in ('type cookies.txt ^| find "bb_session"') do set session_cookie=%%A
+	if "%session_cookie%"=="" goto :notloggedin
+	
 	:: now that we're logged-in and at the right page, upload whatever you want to your repository...
 	echo actual upload progress should appear right now as a progress bar, be patient:
 	curl -k -c cookies.txt -b cookies.txt --progress-bar -o nul --referer "https://bitbucket.org/%pge%" -L --form csrfmiddlewaretoken=%csrf% --form token= --form file=@"%fil%" https://bitbucket.org/%pge%
 	
 	echo done? maybe. *crosses fingers*
+	goto :end
+	
+:notloggedin
+	echo. 
+	echo  [!] error: didn't get the session cookie, probably bad credentials or they changed stuff... upload canceled!
 	goto :end
 
 :bad
