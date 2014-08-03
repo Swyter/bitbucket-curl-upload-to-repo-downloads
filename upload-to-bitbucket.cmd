@@ -1,4 +1,4 @@
-@echo off
+@echo off && setlocal
 
 if "%1"=="" goto :bad
 if "%2"=="" goto :bad
