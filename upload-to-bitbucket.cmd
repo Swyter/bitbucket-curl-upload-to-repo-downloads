@@ -19,15 +19,15 @@ if "%4"=="" goto :bad
 	echo getting initial csrf token from the sign-in page:
 	curl -k -c cookies.txt --progress-bar -o nul https://bitbucket.org/account/signin/
 	
-	for /f "tokens=1 delims=" %%A in ('type cookies.txt ^| find "csrf"') do set csrf=%%A
-	set csrf=%csrf:~-32%
+	for /f "tokens=7 delims=	" %%A in ('type cookies.txt ^| find "csrf"') do set csrf=%%A
+	echo --^>^>%csrf%^<^<--
 	
 	:: and login using POST, to get the final session cookies, then redirect it to the right page
 	echo signing in with the credentials provided:
 	curl -k -c cookies.txt -b cookies.txt --progress-bar -o nul -d "username=%usr%&password=%pwd%&submit=&next=%pge%&csrfmiddlewaretoken=%csrf%" --referer "https://bitbucket.org/account/signin/" -L https://bitbucket.org/account/signin/
 	
-	for /f "tokens=1 delims=" %%A in ('type cookies.txt ^| find "csrf"') do set csrf=%%A
-	set csrf=%csrf:~-32%
+	for /f "tokens=7 delims=	" %%A in ('type cookies.txt ^| find "csrf"') do set csrf=%%A
+	echo --^>^>%csrf%^<^<--
 	
 	:: now that we're logged-in and at the right page, upload whatever you want to your repository...
 	echo actual upload progress should appear right now as a progress bar, be patient:
