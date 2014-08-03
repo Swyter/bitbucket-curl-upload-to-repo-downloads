@@ -36,7 +36,9 @@ if "%4"=="" goto :bad
 	echo actual upload progress should appear right now as a progress bar, be patient:
 	curl -k -c cookies.txt -b cookies.txt --progress-bar -o nul --referer "https://bitbucket.org/%pge%" -L --form csrfmiddlewaretoken=%csrf% --form token= --form file=@"%fil%" https://bitbucket.org/%pge%
 	
-	echo done? maybe. *crosses fingers*
+	echo done? maybe. *crosses fingers* signing out, closing session!
+	curl -k -c cookies.txt -b cookies.txt --progress-bar -o nul -L https://bitbucket.org/account/signout/
+	
 	goto :end
 	
 :notloggedin
