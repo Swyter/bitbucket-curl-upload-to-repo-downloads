@@ -47,7 +47,7 @@ if "%4"=="" goto :bad
 	goto :end
 
 :bad
-	echo  [!] error: missing parameters :(
+	echo  [!] error: missing arguments :(
 	echo. 
 	echo  syntax: upload-to-bitbucket.cmd ^<user^> ^<password^> ^<repo downloads page^> ^<local file to upload^>
 	echo example: upload-to-bitbucket.cmd swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
