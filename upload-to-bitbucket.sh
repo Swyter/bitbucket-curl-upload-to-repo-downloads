@@ -4,8 +4,8 @@ if [ $# -lt 4 ] || [ -z $1  -o  -z $2  -o  -z $3  -o  -z $4 ]; then
 	cat <<-EOF
 	[!] error: missing arguments :(
 	
-	 syntax: upload-to-bitbucket.cmd <user> <password> <repo downloads page> <local file to upload>
-	example: upload-to-bitbucket.cmd swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
+	 syntax: upload-to-bitbucket.sh <user> <password> <repo downloads page> <local file to upload>
+	example: upload-to-bitbucket.sh swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
 	EOF
 	
 	exit
