@@ -6,7 +6,7 @@ if [ $# -lt 4 ] || [ -z $1  -o  -z $2  -o  -z $3  -o  -z $4 ]; then
 	
 	 syntax: upload-to-bitbucket.sh <user> <password> <repo downloads page> <local file to upload>
 	example: upload-to-bitbucket.sh swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
-	EOF
+EOF
 	
 	exit
 fi
@@ -33,7 +33,7 @@ if [ -z "$(grep bb_session cookies.txt)" ]; then
 	cat <<-EOF
 	
 	[!] error: didn't get the session cookie, probably bad credentials or they changed stuff... upload canceled!
-	EOF
+EOF
 
 	exit
 fi
