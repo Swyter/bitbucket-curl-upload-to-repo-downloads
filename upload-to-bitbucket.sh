@@ -31,7 +31,7 @@ fi
 
 if [ -z "$(grep bb_session cookies.txt)" ]; then
 	cat <<-EOF
-	
+        
 	[!] error: didn't get the session cookie, probably bad credentials or they changed stuff... upload canceled!
 EOF
 
@@ -40,7 +40,7 @@ fi
 
 	# now that we're logged-in and at the right page, upload whatever you want to your repository...
 	echo "actual upload progress should appear right now as a progress bar, be patient:"
-	curl -k -c cookies.txt -b cookies.txt --progress-bar -o /dev/null --referer "https://bitbucket.org/$pge" -L --form csrfmiddlewaretoken=$csrf --form token= --form file=@"$fil" https://bitbucket.org/$pge
+	curl -k -c cookies.txt -b cookies.txt --referer "https://bitbucket.org/$pge" -L --form csrfmiddlewaretoken=$csrf --form token= --form file=@"$fil" https://bitbucket.org/$pge --verbose -o C:\Users\Aaron\Desktop\curl.txt -D C:\Users\Aaron\Desktop\headers.txt
 
 	echo "done? maybe. *crosses fingers* signing out, closing session!"
 	curl -k -c cookies.txt -b cookies.txt --progress-bar -o /dev/null -L https://bitbucket.org/account/signout/
