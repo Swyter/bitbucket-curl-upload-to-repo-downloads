@@ -136,7 +136,7 @@ $csrfToken
 Content-Disposition: form-data; name="token"
 
 --$boundary
-Content-Disposition: form-data; name="file"; filename="$(Split-Path -Leaf -Path $FilePath)"
+Content-Disposition: form-data; name="files"; filename="$(Split-Path -Leaf -Path $FilePath)"
 Content-Type: application/octet-stream
 
 $bytes
