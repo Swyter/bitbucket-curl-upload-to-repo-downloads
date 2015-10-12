@@ -1,10 +1,12 @@
 <#
 .SYNOPSIS
 Publishes a file to Bitbucket so it is available on a project's download page.
+
+.DESCRIPTION
+The `Publish-BitbucketDownload` script publishes a file to a repository so it is availabe on a project's download page. If the file already exists on Bitbucket, it is replaced with the current file.
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
     [pscredential]
     # The Bitbucket credentials to use.
     $Credential,
@@ -57,7 +59,7 @@ function Assert-Response
     }
 
     $errorElement = $Response.ParsedHtml.getElementById('error')
-    if( $errorElement )
+    if( $errorElement -and ($errorElement | Get-Member 'innerHtml') -and $erroElement.innerHtml )
     {
         Write-Error $errorElement.innerHtml
         return $false
@@ -65,6 +67,11 @@ function Assert-Response
 
     return $true
 
+}
+
+if( -not $Credential )
+{
+    $Credential = Get-Credential -Message ('Enter credentials for https://bitbucket.org/{0}/{1}' -f $Username,$ProjectName)
 }
 
 $outFile = '{0}+{1}' -f (Split-Path -Leaf -Path $PSCommandPath),[IO.Path]::GetRandomFileName()
@@ -122,12 +129,9 @@ $csrfToken = $resp.Forms |
                 ForEach-Object { $_.Fields.csrfmiddlewaretoken }
 Write-Debug $csrfToken
 
-$bytes = $fileBin = [IO.File]::ReadAllBytes($FilePath)
-$bytes = [Text.Encoding]::ASCII.GetString($bytes)
+    $boundary = [Guid]::NewGuid().ToString()
 
-$boundary = [Guid]::NewGuid().ToString()
-
-$body = @"
+    $bodyStart = @"
 --$boundary
 Content-Disposition: form-data; name="csrfmiddlewaretoken"
 
@@ -139,16 +143,52 @@ Content-Disposition: form-data; name="token"
 Content-Disposition: form-data; name="files"; filename="$(Split-Path -Leaf -Path $FilePath)"
 Content-Type: application/octet-stream
 
-$bytes
+
+"@
+
+$bodyEnd = @"
+
 --$boundary--
 "@
 
-Write-Debug $body
+    $requestInFile = Join-Path -Path $env:TEMP -ChildPath ([IO.Path]::GetRandomFileName())
 
-$contentType = 'multipart/form-data; boundary={0}' -f $boundary
+    try
+    {
+        $fileStream = New-Object 'System.IO.FileStream' ($requestInFile, [System.IO.FileMode]'Create', [System.IO.FileAccess]'Write')
+    
+        try
+        {
+            $bytes = [Text.Encoding]::UTF8.GetBytes($bodyStart)
+            $fileStream.Write( $bytes, 0, $bytes.Length )
 
-$resp = Invoke-WebRequest -Uri $downloadUri -Method Post -Body $body -ContentType $contentType -Headers @{ Referer = $downloadUri }
-if( -not (Assert-Response -Response $resp -ExpectedUri $downloadUri) )
-{
-    exit 1
+            $bytes = [IO.File]::ReadAllBytes($FilePath)
+            $fileStream.Write( $bytes, 0, $bytes.Length )
+
+            $bytes = [Text.Encoding]::UTF8.GetBytes($bodyEnd)
+            $fileStream.Write( $bytes, 0, $bytes.Length )
+        }
+        finally
+        { 
+            $fileStream.Close()
+        }
+
+        $contentType = 'multipart/form-data; boundary={0}' -f $boundary
+
+        $resp = Invoke-WebRequest -Uri $downloadUri `
+                                  -Method Post `
+                                  -InFile $requestInFile `
+                                  -ContentType $contentType `
+                                  -Headers @{ Referer = $downloadUri }
+        if( -not (Assert-Response -Response $resp -ExpectedUri $downloadUri) )
+        {
+            exit 1
+        }
+
+    }
+    finally
+    {
+        Remove-Item -Path $requestInFile
+    }
+
 }
