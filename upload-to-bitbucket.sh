@@ -1,46 +1,53 @@
 #!/bin/bash
 
 if [ $# -lt 4 ] || [ -z $1  -o  -z $2  -o  -z $3  -o  -z $4 ]; then
-	cat <<-EOF
-	[!] error: missing arguments :(
-	
-	 syntax: upload-to-bitbucket.sh <user> <password> <repo downloads page> <local file to upload>
-	example: upload-to-bitbucket.sh swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
-EOF
-	
-	exit
-fi
-	usr=$1; pwd=$2; pge=$3; fil=$4
-	
-	# works like this: GET /account/signin/ -> POST /account/signin/ -> auto-redir to downloads page -> POST downloads page
-	
-	# GET initial csrf, dropped in the cookie, final 32 chars of the line containing that word
-	# [i] note: you can add the "-v" parameter to any cURL command to get a detailed/verbose output, useful to diagnose problems.
-	echo "getting initial csrf token from the sign-in page:"
-	curl -k -c cookies.txt --progress-bar -o /dev/null https://bitbucket.org/account/signin/
-	
-	csrf=$(grep csrf cookies.txt); set $csrf; csrf=$7;
-	
-	# and login using POST, to get the final session cookies, then redirect it to the right page
-	echo "signing in with the credentials provided:"
-	curl -k -c cookies.txt -b cookies.txt --progress-bar -o /dev/null -d "username=$usr&password=$pwd&submit=&next=$pge&csrfmiddlewaretoken=$csrf" --referer "https://bitbucket.org/account/signin/" -L https://bitbucket.org/account/signin/
-	
-	csrf=$(grep csrf cookies.txt); set $csrf; csrf=$7;
-	
-	# check that we have the session cookie, if not, something bad happened, don't spend time uploading.
+    cat <<-EOF
+    [!] error: missing arguments :(
 
-if [ -z "$(grep bb_session cookies.txt)" ]; then
-	cat <<-EOF
-	
-	[!] error: didn't get the session cookie, probably bad credentials or they changed stuff... upload canceled!
+     syntax: upload-to-bitbucket.sh <user> <password> <repo downloads page> <local file to upload>
+    example: upload-to-bitbucket.sh swyter secret1 /Swyter/tld-downloads/downloads myfile.zip
+
+    tip: if a file with the same name is already in there it will be overwrited without notice
+
 EOF
 
-	exit
+    exit
+fi
+    usr=$1; pwd=$2; pge=$3; fil=$4
+
+    # now seems to work like this: https://confluence.atlassian.com/bitbucket/downloads-resource-812221853.html#downloadsResource-POSTafile
+
+    echo "actual upload progress should appear right now as a progress bar, be patient:"
+    curl --insecure         `# make tls cert validation optional, read this if you need it (https://curl.haxx.se/docs/sslcerts.html) ` \
+         --progress-bar     `# print the progress visually                                                                          ` \
+         --output /tmp/utbb `# avoid outputting anything apart from that neat bar                                                  ` \
+         --location         `# follow redirects if we are told so                                                                 ` \
+         --user "$usr:$pwd" `# basic auth so that it lets us in                                                                  ` \
+         --form files=@"$fil" https://api.bitbucket.org/2.0/repositories/${pge#/} # <- that special #/ thing trims initial slashes, if any
+
+    # -> when curl proceeds okay but the server is not happy:
+if [ ! -z "$(grep error /tmp/utbb)" ]; then
+    cat <<-EOF
+
+    [!] server error: bitbucket (the platform) returned a message for us to see:
+
+    $(cat /tmp/utbb)
+
+EOF
+
+    # custom error code for server-side issues
+    exit 255
 fi
 
-	# now that we're logged-in and at the right page, upload whatever you want to your repository...
-	echo "actual upload progress should appear right now as a progress bar, be patient:"
-	curl -k -c cookies.txt -b cookies.txt --progress-bar -o /dev/null --referer "https://bitbucket.org/$pge" -L --form csrfmiddlewaretoken=$csrf --form token= --form files=@"$fil" https://bitbucket.org/$pge
+    # -> when curl has general connectivity problems at network level:
+if [ $? -ne 0 ]; then
+    cat <<-EOF
 
-	echo "done? maybe. *crosses fingers* signing out, closing session!"
-	curl -k -c cookies.txt -b cookies.txt --progress-bar -o /dev/null -L https://bitbucket.org/account/signout/
+    [!] error: curl returned exit code $?... upload canceled!
+               to see what the number means go here:
+               <https://curl.haxx.se/docs/manpage.html#EXIT>
+
+EOF
+fi
+    # return the same error for further script processing
+    exit $?
