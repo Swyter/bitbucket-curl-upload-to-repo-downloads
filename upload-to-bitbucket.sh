@@ -18,25 +18,39 @@ fi
     # now seems to work like this: https://confluence.atlassian.com/bitbucket/downloads-resource-812221853.html#downloadsResource-POSTafile
 
     echo "actual upload progress should appear right now as a progress bar, be patient:"
-    curl --insecure         `# make tls cert validation optional, read this if you need it (https://curl.haxx.se/docs/sslcerts.html) ` \
-         --progress-bar     `# print the progress visually                                                                          ` \
-         --output /tmp/utbb `# avoid outputting anything apart from that neat bar                                                  ` \
-         --location         `# follow redirects if we are told so                                                                 ` \
-         --user "$usr:$pwd" `# basic auth so that it lets us in                                                                  ` \
-         --form files=@"$fil" https://api.bitbucket.org/2.0/repositories/${pge#/} # <- that special #/ thing trims initial slashes, if any
+    curl --insecure               `# make tls cert validation optional, read this if you need it (https://curl.haxx.se/docs/sslcerts.html) ` \
+         --progress-bar           `# print the progress visually                                                                          ` \
+         --output ./utbb          `# avoid outputting anything apart from that neat bar                                                  ` \
+         --location               `# follow redirects if we are told so                                                                 ` \
+         --fail                   `# ensure that we are not succeeding when the server replies okay but with an error code             ` \
+         --write-out %{http_code} `# write the returned error code to stdout, we will redirect it later to a file for parsing         ` \
+         --user "$usr:$pwd"       `# basic auth so that it lets us in                                                                ` \
+         --form files=@"$fil" "https://api.bitbucket.org/2.0/repositories/${pge#/}" 1> utbb_httpcode # <- that special #/ thing trims initial slashes, if any
 
     # -> when curl proceeds okay but the server is not happy:
-if [ ! -z "$(grep error /tmp/utbb)" ]; then
+if [ -f ./utbb ] && [ ! -z "$(grep error ./utbb)" ]; then
     cat <<-EOF
 
     [!] server error: bitbucket (the platform) returned a message for us to see:
 
-    $(cat /tmp/utbb)
+    $(cat ./utbb)
 
 EOF
 
     # custom error code for server-side issues
     exit 255
+fi
+
+    # -> when the server responds with an http code other than 201 (created):
+if [ -f ./utbb_httpcode ] && [ ! -z "$(cat ./utbb_httpcode)" ] && [ "$(cat ./utbb_httpcode)" -ne 201 ]; then
+    cat <<-EOF
+
+    [!] server error: bitbucket (the platform) returned HTTP error code $(cat ./utbb_httpcode)
+
+EOF
+
+    # custom error code for server-side issues
+    exit 254
 fi
 
     # -> when curl has general connectivity problems at network level:
